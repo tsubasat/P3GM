@@ -1,19 +1,6 @@
-python data_process.py
-
-python src/synthesize.py --db mnist --lot_size 240 --epoch 10 --gmm_sigma 120 --latent_dim 1000 --sgd_sigma 1.32
-python ml_task/exp_ml.py --db mnist
-
-python src/synthesize.py --db fashion --lot_size 240 --epoch 10 --gmm_sigma 120 --latent_dim 1000 --sgd_sigma 1.32
-python ml_task/exp_ml.py --db fashion
-
-python src/synthesize.py --db adult --epoch 5 --lot_size 300 --sgd_sigma 1.35
-python ml_task/exp_ml.py --db adult
-
-python src/synthesize.py --db isolet --epoch 5 --lot_size 50 --sgd_sigma 1.35 --latent_dim 1000
-python ml_task/exp_ml.py --db isolet
-
-python src/synthesize.py --db esr --epoch 2 --latent_dim 1000 --z_dim 5 --lot_size 100
-python ml_task/exp_ml.py --db esr
-
-python src/synthesize.py --db credit --z_dim 31 --lot_size 2000 --epoch 10 --gmm_sigma 120 --latent_dim 1000 --sgd_sigma 1.83
-python ml_task/exp_ml.py --db credit
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 100 --sgd_sigma 2.1 --sgd_epoch 15 --pca_sigma 10 --db credit --alg p3gm --n_iter 20
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 100 --sgd_sigma 1.6 --sgd_epoch 2 --pca_sigma 5 --db isolet --alg p3gm --n_iter 20
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 100 --sgd_sigma 1.4 --sgd_epoch 2 --pca_sigma 5 --db esr --alg p3gm --n_iter 20
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 200 --sgd_sigma 1.4 --sgd_epoch 5 --pca_sigma 5 --db adult --alg p3gm --n_iter 20
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 300 --sgd_sigma 1.4 --sgd_epoch 4 --pca_sigma 5 --db fashion --alg p3gm --n_iter 20
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 300 --sgd_sigma 1.4 --sgd_epoch 4 --pca_sigma 5 --db mnist --alg p3gm --n_iter 20

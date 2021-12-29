@@ -1,0 +1,3 @@
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 100 --sgd_sigma 0 --sgd_epoch 0 --pca_sigma 35 --db credit --alg p3gm --gmm_iter 2 --gmm_sigma 250 --n_iter 20
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 100 --sgd_sigma 2.2 --sgd_epoch 2 --pca_sigma 10 --db credit --alg p3gm --gmm_iter 10 --gmm_sigma 150 --n_iter 20
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 100 --sgd_sigma 1 --sgd_epoch 20 --pca_sigma 1.2 --db credit --alg p3gm --n_iter 20

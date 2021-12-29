@@ -3,6 +3,7 @@ from sklearn.utils import check_array, check_random_state
 from sklearn.utils.validation import check_is_fitted
 
 import numpy as np
+import my_util
 
 def _check_X(X, n_components=None, n_features=None, ensure_min_samples=1):
     X = check_array(X, dtype=[np.float64, np.float32],
@@ -143,17 +144,17 @@ class DPGaussianMixture(BaseMixture):
         rdp = self._cp_em_rdp_with_sigma(sigma)
         return rdp
         
-
     def fit_predict(self, X, y=None):
-        
+
+        # When fit() is called, this function is called
+        # First, norm is clipped into 1
+        X = my_util.norm_clipping(X)
         X = _check_X(X, self.n_components, ensure_min_samples=2)
 
         lower_bound = -np.infty
         self.converged_ = False
 
         random_state = check_random_state(self.random_state)
-
-        n_samples, _ = X.shape
         
         self._initialize_parameters(X, random_state)
 
@@ -170,30 +171,22 @@ class DPGaussianMixture(BaseMixture):
 
             change = lower_bound - prev_lower_bound
             self._print_verbose_msg_iter_end(n_iter, change)
-
-            #epsilon = self.compute_privacy_budget()
         
         self._set_parameters(params)
-        #epsilon = self.compute_privacy_budget()
-        #print(f"epsilon = {epsilon} at {n_iter + 1} iterations")
         
         self.weights_ /= self.weights_.sum()
         
         self._print_verbose_msg_init_end(lower_bound)
         return
 
-    #def compute_privacy_budget(self):
-    #    return (self.privacy_budget + 2*np.sqrt(self.privacy_budget*np.log(1/self.delta)))
-
     def _initialize(self, X, resp):
         
-        self.max_norm = np.linalg.norm(X, axis=1).max()
         
         self.privacy_budget = 0
         n_samples, _ = X.shape
         
         weights, means, covariances, budget = _estimate_gaussian_parameters_with_dp(
-            X, resp, self.reg_covar, self.sigma, None, self.max_norm, random_state=self.random_state)
+            X, resp, self.reg_covar, self.sigma, None, 1, random_state=self.random_state)
         weights /= n_samples
         self.privacy_budget += budget
         
@@ -207,7 +200,7 @@ class DPGaussianMixture(BaseMixture):
     def _m_step(self, X, log_resp):
         n_samples, _ = X.shape
         self.weights_, self.means_, self.covariances_, budget = (
-            _estimate_gaussian_parameters_with_dp(X, np.exp(log_resp), self.reg_covar, self.sigma, self.covariances_,self.max_norm, random_state=self.random_state))
+            _estimate_gaussian_parameters_with_dp(X, np.exp(log_resp), self.reg_covar, self.sigma, self.covariances_,1, random_state=self.random_state))
         self.privacy_budget += budget
         self.weights_ /= n_samples
         self.precisions_cholesky_ = _compute_precision_cholesky(

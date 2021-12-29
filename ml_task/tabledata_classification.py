@@ -22,13 +22,13 @@ def classify(samples, labels, x_test, y_test):
     prcs = []
     
     print("LR")
-    clf = LogisticRegression()
+    clf = LogisticRegression(solver='liblinear')
     score = fit_roc_prc(clf, samples, labels, x_test, y_test)
     
     results["LR"] = score
     
     print("xgb")
-    clf = xgb.XGBRegressor(nthread=1)
+    clf = xgb.XGBRegressor(nthread=1, subsample=0.5)
     score = fit_roc_prc(clf, samples, labels, x_test, y_test)
 
     results["XgBoost"] = score

@@ -6,10 +6,6 @@ filedir = pathlib.Path(__file__).resolve().parent
 
 class VAE(torch.nn.Module):
     
-    @classmethod
-    def make_model(cls, dims, device, z_dim=10, latent_dim=1000):
-        return cls(dims, device, z_dim, latent_dim).to(device)
-    
     def __init__(self, dims, device, z_dim=10, latent_dim=1000):
         super().__init__()
         
@@ -36,18 +32,8 @@ class VAE(torch.nn.Module):
         return self.fc4(h3)
     
     def forward(self, x):
-        mean, logvar = self.encode(x)
+        mean, _ = self.encode(x)
         return self.decode(mean)
-
-    def save_model(self, name):
-        now = datetime.datetime.now()
-        filename = now.strftime("VAE_" + '%Y%m%d_%H%M%S' + "_" + name)
-        model_dir = os.path.join("models", self.db, filename)
-        torch.save(self.state_dict(), model_dir)    
-        
-    def load_model(self, filename):
-        model_dir = os.path.join("models", filename)
-        self.load_state_dict(torch.load(model_dir))
         
     def z_sample(self, n_samples):
         samples = torch.Tensor(torch.randn(n_samples, self.z_dim)).to(self.device)
@@ -55,9 +41,8 @@ class VAE(torch.nn.Module):
     
     def generate_data(self, n_data):
         z = self.z_sample(n_data)
-        data = self.decode(z)
-        return data
-    
+        return self.decode(z)
+
     def loss_function(self, x, means, logvar):
         z = self.reparameterize(means, logvar)
         recon_x = self.decode(z)
@@ -68,20 +53,21 @@ class VAE(torch.nn.Module):
     
     def backward(self, losses):
         losses.mean().backward()
-        
 
     def _saveimg(self, sample_data, epoch):
+        (filedir.parent / "result" / "imgs").mkdir(exist_ok=True)
         torchvision.utils.save_image(sample_data.view(-1, 1, 28, 28), filedir.parent / "result" / "imgs" / f"{epoch}.png", nrow=10)
-    
+
     def train(self, train_loader, **kwargs):
         lr = kwargs.get('lr', 1e-3)
-        epoch = kwargs.get("epoch", 10)
+        epoch = kwargs.get("sgd_epoch", 10)
 
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         
         print(f"n_epoch:{epoch}")
         for i in range(epoch):
             recon_loss, kld_loss = 0, 0
+            
             for data in train_loader:
 
                 data = data.to(self.device)
