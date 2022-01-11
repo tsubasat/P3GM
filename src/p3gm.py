@@ -1,4 +1,3 @@
-import vae
 import sys
 import torch
 import math
@@ -10,6 +9,7 @@ from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp, get_
 
 sys.path.append(str(filedir.parent))
 import dp_utils
+import vae
 
 # The method to compute the approximate KL divergence between Gaussian and MoG.
 # MoG = [pi, mu, var]
@@ -98,6 +98,7 @@ class P3GM(vae.VAE):
         clipping = kwargs.get("clipping")
         num_microbatches = kwargs.get("num_microbatches")
         lr = kwargs.get("lr")
+        nopretrain = kwargs.get("nopretrain")
 
         self.sgd_sigma, self.clipping, self.num_microbatches = sgd_sigma, clipping, num_microbatches
 
@@ -111,10 +112,11 @@ class P3GM(vae.VAE):
         self._train_gmm(feature, gmm_sigma, gmm_n_comp, gmm_iter, random_state)
         self._set_parameters()
 
-        self.pcapretrain()
+        if not nopretrain:
+            self.pcapretrain()
 
         # train neural networks
-        super().train(train_loader, sigma=sgd_sigma, sgd_epoch=sgd_epoch, lr=lr)
+        super().train(train_loader, **kwargs)
 
     def _inverse_pca(self, X):
         return torch.tensor(self.pca.inverse_transform(X.cpu()))
@@ -133,6 +135,12 @@ class P3GM(vae.VAE):
         data = self._inverse_pca(z)
         return z.detach().cpu().numpy(), data.detach().cpu().numpy()
 
+    def set_vae(self):
+        self.encode = super().encode
+        self.train = super().train
+        self.loss_function = super().loss_function
+        
+
     def _set_parameters(self):
         self.gmm_weights_ = torch.nn.Parameter(torch.tensor(self.gmm.weights_, dtype=torch.float32), requires_grad=False).to(self.device)
         self.gmm_means_ = torch.nn.Parameter(torch.tensor(self.gmm.means_, dtype=torch.float32), requires_grad=False).to(self.device)
@@ -149,12 +157,22 @@ class P3GM(vae.VAE):
         self.gmm = dp_utils.dp_gaussian_mixture.DPGaussianMixture(sigma=gmm_sigma, n_components=gmm_n_comp, n_iter=gmm_iter, random_state=random_state)
         self.gmm.fit(feature)
 
+
     def loss_function(self, data, means, logvar):
         
         z = self.reparameterize(means, logvar)
         recon_x = self.decode(z)
         SE = torch.sum((recon_x - data) ** 2, dim=1)
         KLD = _p3gm_kl_divergence([means, torch.exp(logvar)], self.gmm_params)
+
+        return SE, KLD
+
+    def loss_function_ae(self, data, means, logvar):
+        
+        z = self.reparameterize(means, logvar)
+        recon_x = self.decode(z)
+        SE = torch.sum((recon_x - data) ** 2, dim=1)
+        KLD = torch.zeros(SE.shape).to(self.device)
 
         return SE, KLD
 

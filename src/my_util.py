@@ -83,23 +83,20 @@ def inverse(encoded_data, encoders):
     return np.concatenate(inverse_data, axis=1)
 
 # The method to make data loader.
-def make_dataloader(train, batch_size, random_state, multi_dataset=False):
+def make_dataloader(train, batch_size, random_state, test_data=None, encoders=None, keys=None):
     
     # The class of a data loader.
     # This class is an iterator which randomly picks up a batch from dataset until the number of iteration reaches an epoch.
     class Generator(collections.abc.Iterator):
-        def __init__(self, train_dataset, batch_size, random_state, multi_dataset=False):
+        def __init__(self, train_dataset, batch_size, random_state, test_data=test_data, encoders=encoders, keys=keys):
+            self.encoders = encoders
+            self.keys = keys
+            self.test_data = test_data
             self.random_state = random_state
             self.batch_size = batch_size
-            self.multi_dataset = multi_dataset
             self.train = []
-            if multi_dataset:
-                for dataset in train_dataset:
-                    shape = dataset.shape
-                    self.train.append(dataset[:int(shape[0] / batch_size) * batch_size].reshape(int(shape[0] / batch_size), batch_size, *shape[1:]))
-            else:
-                shape = train_dataset.shape
-                self.train = [train_dataset[:int(shape[0] / batch_size) * batch_size].reshape(int(shape[0] / batch_size), batch_size, *shape[1:])]
+            shape = train_dataset.shape
+            self.train = [train_dataset[:int(shape[0] / batch_size) * batch_size].reshape(int(shape[0] / batch_size), batch_size, *shape[1:])]
             self.n_iteration = self.get_n_batch()
             self.counter = 0
             
@@ -110,9 +107,8 @@ def make_dataloader(train, batch_size, random_state, multi_dataset=False):
             if self.counter == self.n_iteration:
                 self.counter = 0
                 raise StopIteration
-            if not self.multi_dataset:
-                return tensor[0]
-            return tensor
+
+            return tensor[0]
         
         def get_n_batch(self):
             return len(self.train[0])
@@ -122,6 +118,9 @@ def make_dataloader(train, batch_size, random_state, multi_dataset=False):
         
         def get_data(self):
             return np.concatenate(self.train[0], axis=0)
+
+        def get_test_data(self):
+            return self.test_data
         
         def get_batch_size(self):
             return self.batch_size
@@ -132,7 +131,7 @@ def make_dataloader(train, batch_size, random_state, multi_dataset=False):
         def get_current_index(self):
             return self.counter
     
-    return Generator(train, batch_size, random_state, multi_dataset)
+    return Generator(train, batch_size, random_state)
 
 def norm_clipping(X):
     clipped = np.zeros(X.shape)

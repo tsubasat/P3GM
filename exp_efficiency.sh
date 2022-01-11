@@ -1,0 +1,6 @@
+# taskset -c 0,1,2,3 python src/synthesize.py --lot_size 300 --sgd_sigma 1.27 --sgd_epoch 10 --pca_sigma 10 --db mnist --alg p3gm --n_iter 20 --eval_each_epoch
+# taskset -c 0,1,2,3 python src/synthesize.py --lot_size 300 --sgd_sigma 1.2 --sgd_epoch 10 --pca_sigma 10 --db mnist --alg dp-vae --n_iter 20 --eval_each_epoch
+# taskset -c 0,1,2,3 python src/synthesize.py --lot_size 300 --sgd_sigma 1.27 --sgd_epoch 10 --pca_sigma 10 --db mnist --alg p3gm-ae --n_iter 20 --eval_each_epoch
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 100 --sgd_sigma 2.7 --sgd_epoch 30 --pca_sigma 10 --db credit --alg p3gm --n_iter 20 --eval_each_epoch --nopretrain
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 100 --sgd_sigma 2.5 --sgd_epoch 30 --pca_sigma 10 --db credit --alg dp-vae --n_iter 20 --eval_each_epoch --nopretrain
+taskset -c 0,1,2,3 python src/synthesize.py --lot_size 100 --sgd_sigma 2.7 --sgd_epoch 30 --pca_sigma 10 --db credit --alg p3gm-ae --n_iter 20 --eval_each_epoch --nopretrain

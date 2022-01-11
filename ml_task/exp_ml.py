@@ -61,18 +61,23 @@ def run(args):
     dataset_dir = filedir.parent.parent / "dataset" / f"{args['db']}"
     result_dir = filedir.parent / "result" / f"{args['db']}" / f"{args['time']}"
     syn_data_dir = pathlib.Path("/data/takagi") / "synthetic_data" / f"{args['db']}" / f"{args['time']}"
+    syn_data_dir_temp = pathlib.Path("/data/takagi") / "synthetic_data" / f"{args['db']}" / f"{args['time']}" / "temp"
     #result_dir.mkdir(parents=True, exist_ok=True)
 
     test_df = pd.read_csv(dataset_dir / "test.csv")
     
     # find synthetic data direction
-    files = syn_data_dir.glob("out_[0-9]*.csv")
-    print(syn_data_dir)
+    if args["temp_exp"]:
+        files = syn_data_dir_temp.glob("temp_[0-9]*.csv")
+        print(syn_data_dir_temp)
+    else:
+        files = syn_data_dir.glob("out_[0-9]*.csv")
+        print(syn_data_dir)
     
     for i, file in enumerate(files):
 
         try:
-            print(f"synthetic data {i}")
+            print(file)
             syn_df = pd.read_csv(file)
             
             # one hot encoding
@@ -85,7 +90,8 @@ def run(args):
             result = classify(syn_data, syn_label, test_data, test_label)
         except:
             result = {"average":[0,0,0]}
-        with (result_dir / f"result_{i}.json").open("w") as f:
+        result_name = f"result_{str(file).split('/')[-1]}.json" if args["temp_exp"] else f"result_{i}.json"
+        with (result_dir / result_name).open("w") as f:
             json.dump(result, f)
 
 

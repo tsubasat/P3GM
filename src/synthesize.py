@@ -48,6 +48,8 @@ parser.add_argument('--num_microbatches', type=int, default=0,
 parser.add_argument('--n_iter', type=int, default=1,
                     help='the number of iterations of a set of training (default: 1)')
 parser.add_argument('--skip_ml', action='store_true')
+parser.add_argument('--eval_each_epoch', action='store_true')
+parser.add_argument('--nopretrain', action='store_true')
 args = parser.parse_args()
     
 if args.num_microbatches == 0:
@@ -60,11 +62,12 @@ def main():
 
     X, encoders, keys, dims = my_util.load_dataset(args.db)
     X_test, _, _, _ = my_util.load_test_dataset(args.db)
-    train_loader = my_util.make_dataloader(X, args.lot_size, random_state=random_state)
+    train_loader = my_util.make_dataloader(X, args.lot_size, random_state=random_state, test_data=X_test, encoders=encoders, keys=keys)
 
     dt_now = datetime.datetime.now()
     now_time = dt_now.strftime('%Y%m%d-%H%M%S')
-    
+    print("WARNING, time is designated")
+
     save_data_dir = pathlib.Path("/data/takagi") / "synthetic_data" / f"{args.db}" / now_time
     result_dir = filedir.parent / "result" / f"{args.db}" / now_time
     save_data_dir.mkdir(parents=True, exist_ok=True)
@@ -76,11 +79,12 @@ def main():
     parameters = vars(args)
     parameters["p3gm_epsilon"] = P3GM.cp_epsilon(len(X), args.lot_size, args.pca_sigma, args.gmm_sigma, args.gmm_iter, args.gmm_n_comp, args.sgd_sigma, args.sgd_epoch, args.p3gm_delta)
     parameters["time"] = now_time
+    
     with open(result_dir / 'param.json', 'w') as f:
         json.dump(vars(args), f, indent=4)
     
     # P3GM inheretes VAE
-    if args.alg == "p3gm":
+    if (args.alg == "p3gm") or (args.alg == "dp-vae") or (args.alg == "p3gm-ae"):
         MODEL = P3GM
     else:
         MODEL = VAE
@@ -88,24 +92,23 @@ def main():
     device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 
     for i in range(args.n_iter):
+        parameters["current_iter"] = i
         # initialize the model
         model = MODEL(dims, device, z_dim=args.z_dim, latent_dim=args.latent_dim).to(device)
-        
+        if args.alg == "dp-vae":
+            model.set_vae()
+        elif args.alg == "p3gm-ae":
+            model.loss_function = model.loss_function_ae
+
         # training
         model.train(train_loader, random_state=random_state, **parameters)
 
-        # generate synthetic data from the trained model
-        syn_data = model.generate_data(len(X)).detach().cpu().numpy()
-        syn_data_from_public_data = model.decode(model.encode(torch.tensor(X_test, dtype=torch.float32).to(device))[0]).detach().cpu().numpy()
-        
-        # inverse the one-hot data to categorical
-        inversed_data = pd.DataFrame(my_util.inverse(syn_data, encoders), columns=keys)
-        inversed_data_from_public_data = pd.DataFrame(my_util.inverse(syn_data_from_public_data, encoders), columns=keys)
-        
-        inversed_data.to_csv(save_data_dir / f"out_{i}.csv", index=None)
-        inversed_data_from_public_data.to_csv(save_data_dir / f"out_public_{i}.csv", index=None)
+        model.generate_data_to_csv(train_loader.get_data_size(), train_loader.get_test_data(), train_loader.encoders, train_loader.keys, i, save_data_dir, "out")
 
     if not args.skip_ml:
+        #parameters["temp_exp"] = False
+        #ml_task.exp_ml.run(parameters)
+        parameters["temp_exp"] = True
         ml_task.exp_ml.run(parameters)
     
 if __name__ == "__main__":
